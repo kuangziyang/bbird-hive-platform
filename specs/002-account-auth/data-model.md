@@ -89,7 +89,7 @@ DISABLED -> ACTIVE: 管理员恢复账号
 | id | Long (雪花) | 必填，唯一 | 事件主键 |
 | actorUserId | Long (雪花) | 可空 | 触发事件的用户；登录失败且用户不存在时为 null |
 | targetUserId | Long (雪花) | 可空 | 事件关联的目标用户（创建/重置密码等） |
-| eventType | Enum | 必填 | `LOGIN_SUCCESS` / `LOGIN_FAILURE` / `SIGN_OUT` / `USER_CREATED` / `PASSWORD_CHANGED` / `PASSWORD_RESET` / `STATUS_CHANGED` / `PERMISSION_DENIED` |
+| eventType | Enum | 必填 | `LOGIN_SUCCESS` / `LOGIN_FAILURE` / `LOGOUT` / `USER_CREATED` / `PASSWORD_CHANGED` / `PASSWORD_RESET` / `USER_STATUS_CHANGED` / `ACCESS_DENIED` |
 | targetResource | String | 可空 | 触发的接口路径或资源标识 |
 | result | String | 必填 | `SUCCESS` / `FAILURE` |
 | reason | String | 可空 | 失败原因 / 说明 |
@@ -97,5 +97,5 @@ DISABLED -> ACTIVE: 管理员恢复账号
 
 ### Validation Rules
 
-- 所有 `LOGIN_SUCCESS` / `LOGIN_FAILURE` / `SIGN_OUT` / `PERMISSION_DENIED` / `PASSWORD_CHANGED` / `PASSWORD_RESET` / `STATUS_CHANGED` / `USER_CREATED` 事件必须落库，便于审计追溯。
+- 所有 `LOGIN_SUCCESS` / `LOGIN_FAILURE` / `LOGOUT` / `ACCESS_DENIED` / `PASSWORD_CHANGED` / `PASSWORD_RESET` / `USER_STATUS_CHANGED` / `USER_CREATED` 事件必须落库，便于审计追溯。
 - API 列表接口（`/api/admin/access-events`）需管理员权限，返回 `AccessEventDto`，ID 全部以字符串形式返回。

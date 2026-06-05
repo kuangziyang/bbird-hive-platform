@@ -266,11 +266,11 @@ components:
       enum:
         - LOGIN_SUCCESS
         - LOGIN_FAILURE
-        - SIGN_OUT
+        - LOGOUT
         - SESSION_EXPIRED
-        - PERMISSION_DENIED
+        - ACCESS_DENIED
         - USER_CREATED
         - ROLE_CHANGED
-        - STATUS_CHANGED
+        - USER_STATUS_CHANGED
         - PASSWORD_CHANGED
         - PASSWORD_RESET
