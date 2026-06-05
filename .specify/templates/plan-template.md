@@ -40,7 +40,21 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- Frontend uses a mainstream, actively maintained, deployment-friendly technology,
+  or documents an approved exception.
+- Backend is planned as Spring Cloud Alibaba AI-based microservices with clear
+  service boundaries, configuration, discovery, resilience, authorization, and audit needs.
+- Agent capabilities use AgentScope by default; any overlap with Spring Cloud Alibaba AI
+  has explicit ownership boundaries and no unjustified duplicate implementation.
+- Persistence uses MySQL 8 and caching uses Redis; any deviation is recorded as a
+  constitution violation with rationale.
+- Deployment plan covers Docker, Kubernetes, and local Podman setup, including
+  images, configuration, dependencies, health checks, and validation.
+- Data changes, cache behavior, cross-service contracts, Agent collaboration flows,
+  and permission boundaries include appropriate tests and observability.
+- Human-facing specifications, plans, tasks, review notes, and documentation are
+  written in Chinese except for technical terms, code identifiers, commands,
+  paths, protocol names, framework/library names, and necessary original error text.
 
 ## Project Structure
 

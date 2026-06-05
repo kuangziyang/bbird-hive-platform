@@ -1,0 +1,276 @@
+openapi: 3.0.3
+info:
+  title: 账号认证与平台角色 API
+  version: 0.1.0
+  description: 账号登录、会话、账号创建、密码修改、密码重置和审计查询契约。
+servers:
+  - url: /api
+paths:
+  /auth/login:
+    post:
+      summary: 用户使用用户名和密码登录
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: 用户名或密码错误，失败事件必须记录
+  /auth/logout:
+    post:
+      summary: 当前用户退出登录
+      operationId: logout
+      responses:
+        '204':
+          description: 退出成功，会话失效
+        '401':
+          description: 未登录或会话已过期
+  /auth/me:
+    get:
+      summary: 获取当前登录用户信息
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: 当前用户信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSummary'
+        '401':
+          description: 未登录或会话已过期
+  /auth/password:
+    put:
+      summary: 普通用户修改自己的密码
+      operationId: changePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '204':
+          description: 修改成功，旧密码失效
+        '400':
+          description: 当前密码错误或新密码无效
+        '401':
+          description: 未登录或会话已过期
+  /admin/users:
+    post:
+      summary: 管理员创建账号
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: 创建成功，返回一次性展示的初始密码
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateUserResponse'
+        '400':
+          description: 用户名重复或请求无效
+        '403':
+          description: 非管理员无权创建账号
+  /admin/users/{userId}/password-reset:
+    post:
+      summary: 管理员重置用户密码
+      operationId: resetPassword
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 重置成功，返回一次性展示的新初始密码
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetPasswordResponse'
+        '403':
+          description: 非管理员无权重置密码
+        '404':
+          description: 用户不存在
+  /admin/users/{userId}/status:
+    put:
+      summary: 管理员调整账号状态
+      operationId: updateUserStatus
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserStatusRequest'
+      responses:
+        '204':
+          description: 状态更新成功
+        '403':
+          description: 非管理员无权调整状态
+        '404':
+          description: 用户不存在
+  /admin/access-events:
+    get:
+      summary: 管理员查询访问事件
+      operationId: listAccessEvents
+      parameters:
+        - name: username
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: eventType
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/AccessEventType'
+      responses:
+        '200':
+          description: 访问事件列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccessEvent'
+        '403':
+          description: 非管理员无权查询审计事件
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+    LoginResponse:
+      type: object
+      required: [user, sessionExpiresAt]
+      properties:
+        user:
+          $ref: '#/components/schemas/UserSummary'
+        sessionExpiresAt:
+          type: string
+          format: date-time
+    UserSummary:
+      type: object
+      required: [id, username, role, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        role:
+          $ref: '#/components/schemas/PlatformRole'
+        status:
+          $ref: '#/components/schemas/UserStatus'
+    CreateUserRequest:
+      type: object
+      required: [username, role, status]
+      properties:
+        username:
+          type: string
+        role:
+          $ref: '#/components/schemas/PlatformRole'
+        status:
+          $ref: '#/components/schemas/UserStatus'
+    CreateUserResponse:
+      type: object
+      required: [user, initialPassword]
+      properties:
+        user:
+          $ref: '#/components/schemas/UserSummary'
+        initialPassword:
+          type: string
+          description: 仅在创建成功响应中展示一次
+    ChangePasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
+          type: string
+          format: password
+    ResetPasswordResponse:
+      type: object
+      required: [initialPassword]
+      properties:
+        initialPassword:
+          type: string
+          description: 仅在重置成功响应中展示一次
+    UpdateUserStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/UserStatus'
+    AccessEvent:
+      type: object
+      required: [id, eventType, result, occurredAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        actorUsername:
+          type: string
+        targetUsername:
+          type: string
+        eventType:
+          $ref: '#/components/schemas/AccessEventType'
+        targetResource:
+          type: string
+        result:
+          type: string
+          enum: [SUCCESS, FAILURE]
+        reason:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+    PlatformRole:
+      type: string
+      enum: [USER, ADMIN]
+    UserStatus:
+      type: string
+      enum: [ACTIVE, DISABLED]
+    AccessEventType:
+      type: string
+      enum:
+        - LOGIN_SUCCESS
+        - LOGIN_FAILURE
+        - SIGN_OUT
+        - SESSION_EXPIRED
+        - PERMISSION_DENIED
+        - USER_CREATED
+        - ROLE_CHANGED
+        - STATUS_CHANGED
+        - PASSWORD_CHANGED
+        - PASSWORD_RESET
