@@ -13,6 +13,8 @@ description: "Task list template for feature implementation"
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
+**Language**: Human-facing task descriptions, documentation tasks, review notes, and validation notes MUST be written in Chinese except for technical terms, code identifiers, commands, paths, protocol names, framework/library names, and necessary original error text.
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
@@ -63,12 +65,15 @@ description: "Task list template for feature implementation"
 
 Examples of foundational tasks (adjust based on your project):
 
-- [ ] T004 Setup database schema and migrations framework
-- [ ] T005 [P] Implement authentication/authorization framework
-- [ ] T006 [P] Setup API routing and middleware structure
-- [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure error handling and logging infrastructure
-- [ ] T009 Setup environment configuration management
+- [ ] T004 Setup MySQL 8 schema and migration framework
+- [ ] T005 [P] Setup Redis cache configuration and cache safety conventions
+- [ ] T006 [P] Implement authentication/authorization framework
+- [ ] T007 [P] Setup Spring Cloud Alibaba AI microservice routing, configuration, and middleware structure
+- [ ] T008 Create base models/entities that all stories depend on
+- [ ] T009 Define AgentScope agent/team collaboration foundations needed by all stories
+- [ ] T010 Configure error handling, structured logging, metrics, tracing, and audit infrastructure
+- [ ] T011 Setup environment configuration management for Docker, Kubernetes, and local Podman
+- [ ] T012 Define health checks and local dependency startup validation
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -182,6 +187,9 @@ Examples of foundational tasks (adjust based on your project):
 - Tests (if included) MUST be written and FAIL before implementation
 - Models before services
 - Services before endpoints
+- AgentScope collaboration behavior before feature-specific Agent orchestration
+- MySQL 8 persistence and Redis cache behavior before dependent user flows
+- Container and Podman validation before deployment-dependent acceptance
 - Core implementation before integration
 - Story complete before moving to next priority
 
@@ -249,4 +257,5 @@ With multiple developers:
 - Verify tests fail before implementing
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
+- Verify Docker/Kubernetes/Podman assumptions when deployment behavior changes
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence

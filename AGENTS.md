@@ -1,4 +1,7 @@
+除了专业术语、代码标识符、命令、路径、协议名、框架名、库名和必要英文错误信息外，
+所有回复、项目文档、规格、计划、任务、检查清单和评审意见均用中文编写。
+
 <!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
+当前 Spec Kit 计划文件：`specs/002-account-auth/plan.md`。
+需要了解技术选型、项目结构、命令和其他重要信息时，先阅读当前计划。
 <!-- SPECKIT END -->

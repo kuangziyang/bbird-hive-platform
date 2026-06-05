@@ -21,6 +21,14 @@
   - Tested independently
   - Deployed independently
   - Demonstrated to users independently
+
+  Constitution alignment: specifications should stay focused on user value and
+  business needs. Do not introduce requirements that bypass the project
+  constitution's technology, deployment, data, cache, Agent, or observability
+  constraints unless the exception is explicit and testable. Except for technical
+  terms, code identifiers, commands, paths, protocol names, framework/library names,
+  and necessary original error text, human-facing specification content must be
+  written in Chinese.
 -->
 
 ### User Story 1 - [Brief Title] (Priority: P1)
