@@ -1,0 +1,2 @@
+# macOS 透明压缩会让某些 .md 被 git 判为 binary，强制按 text 处理
+*.md text
