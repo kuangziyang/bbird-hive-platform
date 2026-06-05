@@ -1,6 +1,6 @@
 # Implementation Plan: 账号认证与平台角色
 
-**Branch**: `001-multi-agent-platform` | **Date**: 2026-06-04 | **Spec**: `specs/002-account-auth/spec.md`
+**Branch**: `002-account-auth` | **Date**: 2026-06-04 | **Spec**: `specs/002-account-auth/spec.md`
 
 **Input**: Feature specification from `specs/002-account-auth/spec.md`
 
@@ -61,29 +61,28 @@ specs/002-account-auth/
 ### Source Code (repository root)
 
 ```text
-backend/
+bbird-hive-server/
 ├── services/
 │   └── auth-service/
-│       ├── src/main/java/
+│       ├── src/main/java/com/bbird/auth/
 │       ├── src/main/resources/
-│       └── src/test/java/
+│       └── src/test/java/com/bbird/auth/
 └── shared/
     └── security/
 
-frontend/
-└── apps/
-    └── web/
-        ├── app/
-        │   ├── login/
-        │   ├── admin/
-        │   └── account/
-        ├── components/
-        │   ├── auth/
-        │   └── chat/
-        ├── lib/
-        │   ├── api/
-        │   └── ai/
-        └── tests/
+bbird-hive-web/
+├── app/
+│   ├── login/
+│   ├── admin/
+│   └── account/
+├── components/
+│   ├── auth/
+│   ├── chat/
+│   └── shell/
+├── lib/
+│   ├── api/
+│   └── ai/
+└── tests/
 
 deploy/
 ├── docker/
@@ -92,10 +91,11 @@ deploy/
 
 tests/
 ├── contract/
-└── integration/
+├── integration/
+└── support/
 ```
 
-**Structure Decision**: 采用前后端分离结构。`backend/services/auth-service` 承担账号、登录、会话、密码和审计能力；`frontend/apps/web` 使用 Next.js App Router 承担登录页、管理端账号管理入口、密码修改界面，并预留 `components/chat` 与 `lib/ai` 给后续 AI chat 工作台复用；`deploy/` 存放 Docker、Kubernetes 和本地 Podman 配置；`tests/` 存放跨服务契约和集成验证。
+**Structure Decision**: 采用前后端分离结构。`bbird-hive-server/services/auth-service` 承担账号、登录、会话、密码和审计能力；`bbird-hive-web` 使用 Next.js App Router 承担登录页、管理端账号管理入口、密码修改界面，并预留 `components/chat` 与 `lib/ai` 给后续 AI chat 工作台复用；`deploy/` 存放 Docker、Kubernetes 和本地 Podman 配置；`tests/` 存放跨服务契约和集成验证。
 
 ## Phase 0: Research
 
