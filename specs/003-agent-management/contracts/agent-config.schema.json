@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://bbird-hive-platform/specs/003-agent-management/contracts/agent-config.schema.json",
+  "title": "BBIRD Agent Configuration Schema",
+  "description": "智能体工具白/黑名单与沙箱约束的统一 JSON schema。003 持久化，007 运行时下发；前后端共用此 schema 做校验。",
+  "definitions": {
+    "toolConfig": {
+      "type": "object",
+      "description": "工具白/黑名单（allowList 与 denyList 二选一）",
+      "properties": {
+        "allowList": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "maxItems": 100,
+          "uniqueItems": true
+        },
+        "denyList": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1, "maxLength": 100 },
+          "maxItems": 100,
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false,
+      "anyOf": [
+        { "required": ["allowList"] },
+        { "required": ["denyList"] }
+      ]
+    },
+    "sandboxConstraint": {
+      "type": "object",
+      "description": "沙箱约束（filesystem / network / timeouts）",
+      "properties": {
+        "fsAllowList": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^/.*" },
+          "maxItems": 50,
+          "uniqueItems": true
+        },
+        "networkPolicy": {
+          "type": "object",
+          "properties": {
+            "egress": { "enum": ["allow", "deny"] },
+            "ingress": { "enum": ["deny"] }
+          },
+          "required": ["egress"],
+          "additionalProperties": false
+        },
+        "timeouts": {
+          "type": "object",
+          "properties": {
+            "cpuSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 },
+            "memoryMb": { "type": "integer", "minimum": 64, "maximum": 8192 },
+            "wallClockSeconds": { "type": "integer", "minimum": 1, "maximum": 3600 }
+          },
+          "required": ["wallClockSeconds"],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "title": "AgentConfigWrapper",
+  "description": "003-007 跨服务契约的根 schema",
+  "properties": {
+    "toolConfig": { "$ref": "#/definitions/toolConfig" },
+    "sandboxConstraint": { "$ref": "#/definitions/sandboxConstraint" }
+  },
+  "additionalProperties": false
+}

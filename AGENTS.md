@@ -2,6 +2,7 @@
 所有回复、项目文档、规格、计划、任务、检查清单和评审意见均用中文编写。
 
 <!-- SPECKIT START -->
-当前 Spec Kit 计划文件：`specs/002-account-auth/plan.md`。
+当前 Spec Kit 计划文件：`specs/003-agent-management/plan.md`。
 需要了解技术选型、项目结构、命令和其他重要信息时，先阅读当前计划。
+（002-account-auth 已收口于 main，其 plan.md 仍可读作历史基线）
 <!-- SPECKIT END -->

@@ -1,0 +1,469 @@
+openapi: 3.0.3
+info:
+  title: 智能体创建与发布 API
+  version: 0.1.0
+  description: |
+    智能体 CRUD + 工具/沙箱配置 + 管理员停用/恢复。
+    鉴权沿用 002 收口的 session cookie `BBIRD_SESSION`。
+    所有 ID 在响应中以字符串形式序列化（雪花 ID 19 位）。
+
+servers:
+  - url: /api
+
+paths:
+  /agents:
+    get:
+      summary: 列出当前用户的智能体
+      operationId: listMyAgents
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [ACTIVE, DISABLED] }
+        - in: query
+          name: name
+          schema: { type: string }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 0, default: 0 }
+        - in: query
+          name: size
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: 智能体列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/AgentListItem' }
+                  total: { type: integer }
+                  page: { type: integer }
+                  size: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      summary: 创建智能体
+      operationId: createAgent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgentCreateRequest' }
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentDetail' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422':
+          description: 业务校验失败（如超过 50 智能体上限、name 重复）
+
+  /agents/{agentId}:
+    get:
+      summary: 智能体详情（owner 或 admin）
+      operationId: getAgent
+      parameters:
+        - in: path
+          name: agentId
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: 详情
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      summary: 编辑智能体（仅 owner）
+      operationId: updateAgent
+      parameters:
+        - in: path
+          name: agentId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AgentUpdateRequest' }
+      responses:
+        '200':
+          description: 编辑成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentDetail' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      summary: 删除智能体（仅 owner）
+      operationId: deleteAgent
+      parameters:
+        - in: path
+          name: agentId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: force
+          schema: { type: boolean, default: false }
+          description: |
+            强制删除（同时取消被引用）：true 时对引用方（004 会话/005 需求）做降级标记
+      responses:
+        '204': { description: 删除成功 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: 智能体被引用且未传 force=true
+
+  /agents/{agentId}/tool-config:
+    get:
+      summary: 获取工具白/黑名单
+      operationId: getToolConfig
+      parameters:
+        - { in: path, name: agentId, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 工具配置
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolConfig' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      summary: 更新工具白/黑名单（仅 owner；UPDATE 自增 version）
+      operationId: updateToolConfig
+      parameters:
+        - { in: path, name: agentId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ToolConfigUpdate' }
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ToolConfig' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /agents/{agentId}/sandbox-constraint:
+    get:
+      summary: 获取沙箱约束
+      operationId: getSandboxConstraint
+      parameters:
+        - { in: path, name: agentId, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 沙箱约束
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SandboxConstraint' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      summary: 更新沙箱约束（仅 owner）
+      operationId: updateSandboxConstraint
+      parameters:
+        - { in: path, name: agentId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SandboxConstraintUpdate' }
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SandboxConstraint' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /agents/{agentId}/references:
+    get:
+      summary: 查询智能体被哪些会话/需求引用（仅 owner）
+      operationId: getAgentReferences
+      parameters:
+        - { in: path, name: agentId, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: 引用列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions:
+                    type: array
+                    items: { $ref: '#/components/schemas/AgentReference' }
+                  demands:
+                    type: array
+                    items: { $ref: '#/components/schemas/AgentReference' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /admin/agents:
+    get:
+      summary: 管理员列出所有智能体
+      operationId: adminListAgents
+      parameters:
+        - in: query
+          name: createdByUserId
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string, enum: [ACTIVE, DISABLED] }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 0, default: 0 }
+        - in: query
+          name: size
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: 智能体列表（含所有用户的）
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/AgentAdminListItem' }
+                  total: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /admin/agents/{agentId}/disable:
+    post:
+      summary: 管理员停用智能体（必须填 reason）
+      operationId: adminDisableAgent
+      parameters:
+        - { in: path, name: agentId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 500 }
+      responses:
+        '200':
+          description: 停用成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { description: reason 缺失或超长 }
+
+  /admin/agents/{agentId}/restore:
+    post:
+      summary: 管理员恢复智能体（必须填 reason）
+      operationId: adminRestoreAgent
+      parameters:
+        - { in: path, name: agentId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 500 }
+      responses:
+        '200':
+          description: 恢复成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentDetail' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+components:
+  schemas:
+    AgentListItem:
+      type: object
+      properties:
+        id: { type: string, description: '雪花 ID 字符串' }
+        name: { type: string }
+        role: { type: string }
+        status: { type: string, enum: [ACTIVE, DISABLED] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        hasToolConfig: { type: boolean }
+        hasSandboxConstraint: { type: boolean }
+
+    AgentAdminListItem:
+      allOf:
+        - $ref: '#/components/schemas/AgentListItem'
+        - type: object
+          properties:
+            createdByUserId: { type: string }
+            createdByUsername: { type: string }
+            disabledByAdminId: { type: string, nullable: true }
+            disabledReason: { type: string, nullable: true }
+            disabledAt: { type: string, format: date-time, nullable: true }
+
+    AgentDetail:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        role: { type: string }
+        capability: { type: string }
+        createdByUserId: { type: string }
+        status: { type: string, enum: [ACTIVE, DISABLED] }
+        disabledByAdminId: { type: string, nullable: true }
+        disabledReason: { type: string, nullable: true }
+        disabledAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        toolConfig: { $ref: '#/components/schemas/ToolConfig' }
+        sandboxConstraint: { $ref: '#/components/schemas/SandboxConstraint' }
+
+    AgentCreateRequest:
+      type: object
+      required: [name, role, capability]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 50 }
+        role: { type: string, minLength: 1, maxLength: 30 }
+        capability: { type: string, minLength: 10, maxLength: 2000 }
+        toolConfig: { $ref: '#/components/schemas/ToolConfigUpdate' }
+        sandboxConstraint: { $ref: '#/components/schemas/SandboxConstraintUpdate' }
+
+    AgentUpdateRequest:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 50 }
+        role: { type: string, minLength: 1, maxLength: 30 }
+        capability: { type: string, minLength: 10, maxLength: 2000 }
+        toolConfig: { $ref: '#/components/schemas/ToolConfigUpdate' }
+        sandboxConstraint: { $ref: '#/components/schemas/SandboxConstraintUpdate' }
+
+    ToolConfig:
+      type: object
+      properties:
+        agentId: { type: string }
+        allowList:
+          type: array
+          items: { type: string }
+        denyList:
+          type: array
+          items: { type: string }
+        version: { type: integer }
+        updatedAt: { type: string, format: date-time }
+
+    ToolConfigUpdate:
+      type: object
+      properties:
+        allowList:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 100 }
+          maxItems: 100
+          uniqueItems: true
+        denyList:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 100 }
+          maxItems: 100
+          uniqueItems: true
+      additionalProperties: false
+      description: allowList 与 denyList 二选一
+
+    SandboxConstraint:
+      type: object
+      properties:
+        agentId: { type: string }
+        fsAllowList:
+          type: array
+          items: { type: string, pattern: '^/.*' }
+        networkPolicy:
+          type: object
+          properties:
+            egress: { type: string, enum: [allow, deny] }
+            ingress: { type: string, enum: [deny] }
+        timeouts:
+          type: object
+          properties:
+            cpuSeconds: { type: integer, minimum: 1, maximum: 3600 }
+            memoryMb: { type: integer, minimum: 64, maximum: 8192 }
+            wallClockSeconds: { type: integer, minimum: 1, maximum: 3600 }
+        updatedAt: { type: string, format: date-time }
+
+    SandboxConstraintUpdate:
+      type: object
+      properties:
+        fsAllowList:
+          type: array
+          items: { type: string, pattern: '^/.*' }
+          maxItems: 50
+          uniqueItems: true
+        networkPolicy:
+          type: object
+          properties:
+            egress: { type: string, enum: [allow, deny] }
+            ingress: { type: string, enum: [deny] }
+          required: [egress]
+        timeouts:
+          type: object
+          properties:
+            cpuSeconds: { type: integer, minimum: 1, maximum: 3600 }
+            memoryMb: { type: integer, minimum: 64, maximum: 8192 }
+            wallClockSeconds: { type: integer, minimum: 1, maximum: 3600 }
+          required: [wallClockSeconds]
+      additionalProperties: false
+
+    AgentReference:
+      type: object
+      properties:
+        type: { type: string, enum: [chat_session, demand] }
+        id: { type: string }
+        title: { type: string }
+        referencedAt: { type: string, format: date-time }
+
+    ErrorResponse:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+        timestamp: { type: string, format: date-time }
+        requestId: { type: string }
+        fieldErrors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+
+  responses:
+    BadRequest:
+      description: 请求体校验失败
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Unauthorized:
+      description: 未登录或 session 过期
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Forbidden:
+      description: 已登录但角色不足（普通用户访问管理端）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: 资源不存在（智能体不存在或非 owner，返回 404 不暴露存在性）
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
