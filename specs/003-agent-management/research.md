@@ -91,3 +91,29 @@
 - **乐观锁版本号（取代硬删）**：复杂度过高，admin 视角下不应允许软删
 PLAN_EOF
 wc -l specs/003-agent-management/research.md
+
+## Decision: 集成 AgentScope 2.0 Java SDK（ReActAgent 入口）
+
+**Rationale**:
+- 宪法 III "AgentScope 作为默认框架" 实质要求 003 用 AgentScope 2.0 真实创建 agent，而非只存元数据
+- AgentScope 2.0 最新版本 `2.0.0-RC1`，提供 `io.agentscope.core.agent.Agent` 接口 + `ReActAgent` 默认实现 + `HarnessAgent` 生产级入口
+- 003 选 `ReActAgent`（裸 ReAct 循环）而非 `HarnessAgent`：
+  - 003 MVP 范围（CRUD + 工具 + 沙箱约束）只触达 ReAct 循环本身
+  - `HarnessAgent` 的 workspace/memory/sandbox/subagent 属工程底座，由 007 多轮会话场景负责
+  - 依赖更小（`agentscope-core` 即可，不必拉 `agentscope-harness`）
+- Model 选型用 `ModelRegistry` 字符串 id 模式：`model("dashscope:qwen-plus")` 自动读 `DASHSCOPE_API_KEY`；可切换 `openai:` / `anthropic:` / `gemini:` / `ollama:` 前缀
+- 工具注册：`@Tool` 注解 + `Toolkit.registerTool(Object)` 反射注册；003 将 `toolConfig.allowList` 映射为 `MCP` 客户端 + `@Tool` 类
+- 跨服务边界重划：003 暴露 `POST /api/agents/{id}/test` smoke test + `GET /api/agents/{id}/runtime` 给 007；007 不再自行实例化，复用 003 runtime 句柄
+
+**Alternatives considered**:
+- **`HarnessAgent`**：含 workspace（AGENTS.md / MEMORY.md / skills/）、Session 持久化、子 agent、HITL 钩子、文件沙箱执行。003 范围不需要这些，引入会让 003 范围爆炸到 007 的领域
+- **自己实现 ReAct 循环**：宪法 III 明确"AgentScope 优先承担 Agent 建模、协作和运行语义"；自实现违反宪法
+- **用 AgentScope 1.x 兼容模式**：2.0 是 2026 最新主版本，1.x 缺 middleware / structured output / 多模态支持；不走 1.x
+- **推迟 AgentScope 集成到 007**：导致 003 仅做 CRUD 元数据，没有"真实创建"；用户反馈后明确要求 003 集成
+
+**Implementation outline**:
+- `AgentScopeFactory`：把 `AgentEntity` + `ToolConfigEntity` 翻译成 `ReActAgent.builder()...build()`
+- `RuntimeRegistry`：进程内 `Map<agentId, ReActAgent>` 缓存 + 重建策略
+- 服务启动 `ApplicationReadyEvent` → 扫 `status=ACTIVE AND runtimeStatus IN (NOT_READY, FAILED)` → lazy rebuild
+- `POST /api/agents/{id}/test`：发 `UserMessage("请用一句话介绍你自己")` → `.call(msg, ctx).block()` → 返回文本或错误
+- `runtimeStatus` 在 build / smoke test 失败时置为 `FAILED` 并写 `lastSmokeTestError`（不阻塞用户编辑）

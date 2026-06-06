@@ -290,6 +290,61 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
+
+  /agents/{agentId}/test:
+    post:
+      summary: smoke test — 真实调用 ReActAgent.call() 验证 agent 可运行
+      operationId: smokeTestAgent
+      parameters:
+        - { in: path, name: agentId, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SmokeTestRequest' }
+      responses:
+        '200':
+          description: smoke test 通过，返回 ReActAgent 回复
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SmokeTestResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: ReActAgent.build() 或 .call() 失败
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /agents/{agentId}/runtime:
+    get:
+      summary: 拉取 agent 的 runtime 元数据（供 007 复用 ReActAgent 句柄）
+      operationId: getAgentRuntime
+      parameters:
+        - { in: path, name: agentId, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: runtime 元数据
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentRuntime' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /internal/agents/{agentId}/runtime:
+    get:
+      summary: 服务间版本（003 内部 + 007 调用，无 session 鉴权；mTLS 鉴权）
+      operationId: getAgentRuntimeInternal
+      parameters:
+        - { in: path, name: agentId, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: runtime 元数据
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AgentRuntime' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
 components:
   schemas:
     AgentListItem:
@@ -298,7 +353,9 @@ components:
         id: { type: string, description: '雪花 ID 字符串' }
         name: { type: string }
         role: { type: string }
-        status: { type: string, enum: [ACTIVE, DISABLED] }
+        model: { type: string, description: 'LLM 模型 id（dashscope:qwen-plus 等）' }
+        status: { type: string, enum: [ACTIVE, DISABLED], description: '治理态' }
+        runtimeStatus: { type: string, enum: [NOT_READY, READY, FAILED], description: 'ReActAgent 实例化与 smoke test 状态' }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         hasToolConfig: { type: boolean }
@@ -321,9 +378,15 @@ components:
         id: { type: string }
         name: { type: string }
         role: { type: string }
-        capability: { type: string }
+        capability: { type: string, description: '能力描述，复用为 ReActAgent.sysPrompt' }
+        model: { type: string, description: 'LLM 模型 id（默认 dashscope:qwen-plus）' }
+        provider: { type: string, nullable: true, description: 'provider 标签（可由 model 前缀派生）' }
         createdByUserId: { type: string }
-        status: { type: string, enum: [ACTIVE, DISABLED] }
+        status: { type: string, enum: [ACTIVE, DISABLED], description: '治理态' }
+        runtimeStatus: { type: string, enum: [NOT_READY, READY, FAILED], description: 'ReActAgent runtime 状态' }
+        runtimeMessage: { type: string, nullable: true, description: 'runtime 错误信息（build 失败原因）' }
+        lastSmokeTestAt: { type: string, format: date-time, nullable: true }
+        lastSmokeTestError: { type: string, nullable: true, description: '最近 smoke test 错误堆栈摘要' }
         disabledByAdminId: { type: string, nullable: true }
         disabledReason: { type: string, nullable: true }
         disabledAt: { type: string, format: date-time, nullable: true }
@@ -338,7 +401,19 @@ components:
       properties:
         name: { type: string, minLength: 1, maxLength: 50 }
         role: { type: string, minLength: 1, maxLength: 30 }
-        capability: { type: string, minLength: 10, maxLength: 2000 }
+        capability: { type: string, minLength: 10, maxLength: 2000, description: '同时作为 ReActAgent.sysPrompt' }
+        model:
+          type: string
+          minLength: 1
+          maxLength: 100
+          default: 'dashscope:qwen-plus'
+          description: 'LLM 模型 id，ModelRegistry 自动读 DASHSCOPE_API_KEY / OPENAI_API_KEY 等'
+        provider:
+          type: string
+          minLength: 1
+          maxLength: 50
+          nullable: true
+          description: 'provider 标签（可选，由 model 前缀自动派生）'
         toolConfig: { $ref: '#/components/schemas/ToolConfigUpdate' }
         sandboxConstraint: { $ref: '#/components/schemas/SandboxConstraintUpdate' }
 
@@ -347,7 +422,9 @@ components:
       properties:
         name: { type: string, minLength: 1, maxLength: 50 }
         role: { type: string, minLength: 1, maxLength: 30 }
-        capability: { type: string, minLength: 10, maxLength: 2000 }
+        capability: { type: string, minLength: 10, maxLength: 2000, description: '更新时会重建 ReActAgent' }
+        model: { type: string, minLength: 1, maxLength: 100, description: '切换 LLM 模型（会触发 runtime rebuild）' }
+        provider: { type: string, minLength: 1, maxLength: 50, nullable: true }
         toolConfig: { $ref: '#/components/schemas/ToolConfigUpdate' }
         sandboxConstraint: { $ref: '#/components/schemas/SandboxConstraintUpdate' }
 
@@ -430,6 +507,52 @@ components:
         id: { type: string }
         title: { type: string }
         referencedAt: { type: string, format: date-time }
+
+    AgentRuntime:
+      type: object
+      description: '003 ↔ 007 跨服务契约：ReActAgent runtime 元数据'
+      properties:
+        agentId: { type: string }
+        name: { type: string }
+        model: { type: string }
+        sysPrompt: { type: string }
+        toolNames:
+          type: array
+          items: { type: string }
+          description: '已注册到 Toolkit 的 tool 名列表'
+        runtimeStatus: { type: string, enum: [NOT_READY, READY, FAILED] }
+        runtimeMessage: { type: string, nullable: true }
+        lastSmokeTestAt: { type: string, format: date-time, nullable: true }
+        lastSmokeTestError: { type: string, nullable: true }
+
+    SmokeTestRequest:
+      type: object
+      required: [prompt]
+      properties:
+        prompt:
+          type: string
+          minLength: 1
+          maxLength: 500
+          default: '请用一句话介绍你自己'
+          description: '发送给 ReActAgent 的 UserMessage 内容'
+
+    SmokeTestResponse:
+      type: object
+      properties:
+        agentId: { type: string }
+        prompt: { type: string }
+        reply: { type: string, description: 'ReActAgent.call() 返回的最终消息文本' }
+        elapsedMs: { type: integer, description: '从发起 call 到收到回复的毫秒数' }
+        toolCalls:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              arguments: { type: object, additionalProperties: true }
+              result: { type: string }
+          description: '本次 smoke test 触发的工具调用列表（可观测）'
+        runtimeStatus: { type: string, enum: [NOT_READY, READY, FAILED], description: 'smoke test 后的 runtime 状态' }
 
     ErrorResponse:
       type: object

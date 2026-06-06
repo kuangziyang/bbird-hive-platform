@@ -52,14 +52,15 @@
 
 **Critical**: 本阶段完成前不得开始用户故事实现。
 
-- [ ] T015 配置 Maven 完整依赖（Spring Boot 3.3 / Spring Cloud Alibaba AI / Spring Security / MyBatis-Plus 3.5 / Flyway / MySQL / Redis / Validation / JSON Schema 校验 / 测试）于 `bbird-hive-server/services/agent-service/pom.xml`
-- [ ] T016 [P] 创建 Agent 实体类于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/domain/AgentEntity.java`（11 字段：id / name / role / capability / createdByUserId / status / disabledByAdminId / disabledReason / disabledAt / createdAt / updatedAt）
+- [ ] T015 配置 Maven 完整依赖（Spring Boot 3.3 / Spring Cloud Alibaba AI / Spring Security / MyBatis-Plus 3.5 / Flyway / MySQL / Redis / Validation / JSON Schema 校验 / 测试 / **AgentScope 2.0 `io.agentscope:agentscope-core:2.0.0-RC1`**）于 `bbird-hive-server/services/agent-service/pom.xml`
+- [ ] T016 [P] 创建 Agent 实体类于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/domain/AgentEntity.java`（**16 字段**：id / name / role / capability / **model**（默认 `dashscope:qwen-plus`）/ **provider** / createdByUserId / status / **runtimeStatus**（`NOT_READY` / `READY` / `FAILED`）/ **runtimeMessage** / **lastSmokeTestAt** / **lastSmokeTestError** / disabledByAdminId / disabledReason / disabledAt / createdAt / updatedAt）
 - [ ] T017 [P] 创建 ToolConfig 实体类于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/domain/ToolConfigEntity.java`（1:1 关联 Agent）
 - [ ] T018 [P] 创建 SandboxConstraint 实体类于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/domain/SandboxConstraintEntity.java`（1:1 关联 Agent）
 - [ ] T019 [P] 创建 AgentEvent 实体类于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/domain/AgentEventEntity.java`（5 类事件）
 - [ ] T020 [P] 创建 AgentStatus 枚举于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/domain/AgentStatus.java`（`ACTIVE` / `DISABLED`）
+- [ ] T020a [P] 创建 RuntimeStatus 枚举于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/domain/RuntimeStatus.java`（`NOT_READY` / `READY` / `FAILED`）
 - [ ] T021 [P] 创建 AgentEventType 枚举于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/domain/AgentEventType.java`（`CREATED` / `UPDATED` / `DELETED` / `DISABLED_BY_ADMIN` / `RESTORED_BY_ADMIN`）
-- [ ] T022 创建 Flyway 迁移脚本 V001 于 `bbird-hive-server/services/agent-service/src/main/resources/db/migration/V001__create_agent_tables.sql`（4 张表：agent / agent_tool_config / agent_sandbox_constraint / agent_event，含所有索引与唯一约束）
+- [ ] T022 创建 Flyway 迁移脚本 V001 于 `bbird-hive-server/services/agent-service/src/main/resources/db/migration/V001__create_agent_tables.sql`（4 张表：agent / agent_tool_config / agent_sandbox_constraint / agent_event，含所有索引与唯一约束；`agent` 表新增 `model` / `provider` / `runtime_status` / `runtime_message` / `last_smoke_test_at` / `last_smoke_test_error` 列与 `runtime_status` 普通索引）
 - [ ] T023 创建 Agent Mapper 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/mapper/AgentMapper.java`（继承 `BaseMapper<AgentEntity>`，启用 `IdType.ASSIGN_ID`）
 - [ ] T024 [P] 创建 ToolConfig Mapper 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/mapper/ToolConfigMapper.java`
 - [ ] T025 [P] 创建 SandboxConstraint Mapper 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/mapper/SandboxConstraintMapper.java`
@@ -107,7 +108,7 @@
 - [ ] T051 [P] [US1] 创建 AgentCreate / AgentUpdate / AgentListItem / AgentDetail DTO 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/api/dto/AgentDtos.java`
 - [ ] T052 [P] [US1] 创建 ToolConfig / ToolConfigUpdate DTO 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/api/dto/ToolConfigDtos.java`
 - [ ] T053 [P] [US1] 创建 SandboxConstraint / SandboxConstraintUpdate DTO 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/api/dto/SandboxConstraintDtos.java`
-- [ ] T054 [US1] 实现 AgentService CRUD 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/service/AgentService.java`（create / get / update / list，私有 ACL 抛 NotFoundException）
+- [ ] T054 [US1] 实现 AgentService CRUD 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/service/AgentService.java`（create / get / update / list / delete；私有 ACL 抛 NotFoundException；**create/update 时调 `AgentScopeFactory.build(entity)` 真实实例化 ReActAgent 并注册到 `RuntimeRegistry`，失败回写 `runtimeStatus=FAILED` 与 `runtimeMessage`**）
 - [ ] T055 [US1] 实现 ToolConfigService 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/service/ToolConfigService.java`（get / update，version 自增，UPDATE 事件含工具差异）
 - [ ] T056 [US1] 实现 SandboxConstraintService 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/service/SandboxConstraintService.java`（get / update，UPDATE 事件含沙箱差异）
 - [ ] T057 [US1] 实现 AgentController 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/api/AgentController.java`（`GET /api/agents` / `POST /api/agents` / `GET /api/agents/{id}` / `PUT /api/agents/{id}`）
@@ -338,3 +339,72 @@ Task: "创建前端 AgentCard 组件"
 - **雪花 ID** 在所有主外键保持一致：`Long` 主键 + JSON 字符串序列化
 - **session 鉴权** 在所有端点保持一致：复用 002 收口的 `BBIRD_SESSION` cookie 与 `AuthorizationService`
 - 避免：模糊任务、同文件冲突、跨故事依赖破坏独立性
+
+
+---
+
+## Phase 8: AgentScope 2.0 集成（追加）
+
+**Purpose**: 把 AgentScope 2.0 Java SDK 接入 agent-service，使 003 真正通过 `ReActAgent.builder()...build()` 创建可运行的智能体，暴露 smoke test 与 runtime 端点给 007 复用。
+
+**说明**: 本阶段在 spec-kit 流程收口后追加，回应"没看到 agent 真实创建过程"的反馈。Phase 1-7 任务保持不变；本阶段任务 T128-T150 全部为新增。
+
+### Foundational: AgentScope 2.0 启动基础
+
+- [ ] T128 [P] 配置 AgentScope 2.0 Maven 依赖（`io.agentscope:agentscope-core:2.0.0-RC1`）于 `bbird-hive-server/services/agent-service/pom.xml`，锁定 `agentscope.version=2.0.0-RC1` 父属性
+- [ ] T129 [P] 创建 `AgentScopeConfig` 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/config/AgentScopeConfig.java`（注册 `ModelRegistry` bean、共享 `Toolkit` bean、`@Value("${agentscope.default-model: dashscope:qwen-plus}")`）
+- [ ] T130 创建 `AgentScopeFactory` 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/service/runtime/AgentScopeFactory.java`（提供 `ReActAgent build(AgentEntity, ToolConfigEntity)` / `void close(ReActAgent)` API；把 `capability` 翻译为 `sysPrompt`、把 `toolConfig.allowList` 反射注册到 `Toolkit`、`model` 字符串 id 走 `ModelRegistry`）
+- [ ] T131 [P] 创建 `RuntimeRegistry` 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/service/runtime/RuntimeRegistry.java`（in-memory `ConcurrentHashMap<Long, ReActAgent>`；提供 `register / get / remove / rebuild / deactivate / restore` API；线程安全）
+- [ ] T132 [P] 创建 `RuntimeRegistryBootstrap` 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/service/runtime/RuntimeRegistryBootstrap.java`（`@EventListener(ApplicationReadyEvent.class)` 扫 `status=ACTIVE AND runtimeStatus IN (NOT_READY, FAILED)` 的智能体逐个 `factory.build()` rebuild，写回 `runtimeStatus` 与 `runtimeMessage`，打 Prometheus 指标）
+- [ ] T133 [P] 创建 `AgentScopeHealthIndicator` 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/service/runtime/AgentScopeHealthIndicator.java`（`/actuator/health/agentscope` 端点，校验 `ModelRegistry` 解析默认 model + `RuntimeRegistry` size）
+
+### Tests for AgentScope 集成
+
+- [ ] T134 [P] [US1] 契约测试 smoke test 端点于 `tests/contract/agents/smoke-test.contract.test.ts`（发 `UserMessage` → 200 + `SmokeTestResponse`）
+- [ ] T135 [P] [US1] 契约测试 runtime 端点于 `tests/contract/agents/agent-runtime.contract.test.ts`（GET `/agents/{id}/runtime` + GET `/internal/agents/{id}/runtime`）
+- [ ] T136 [P] [US1] 单元测试 `AgentScopeFactory` 于 `bbird-hive-server/services/agent-service/src/test/java/com/bbird/agent/service/runtime/AgentScopeFactoryTest.java`（build 成功 / 模型解析失败 / tool 注册失败）
+- [ ] T137 [P] [US1] 单元测试 `RuntimeRegistry` 于 `bbird-hive-server/services/agent-service/src/test/java/com/bbird/agent/service/runtime/RuntimeRegistryTest.java`（register/remove/rebuild/线程安全）
+- [ ] T138 [P] [US1] 单元测试 `AgentScopeHealthIndicator` 于 `bbird-hive-server/services/agent-service/src/test/java/com/bbird/agent/service/runtime/AgentScopeHealthIndicatorTest.java`
+- [ ] T139 [P] [US1] 前端 `ModelSelector` 组件测试于 `bbird-hive-web/tests/agents/model-selector.spec.tsx`（dashscope/openai/anthropic/gemini/ollama 切换）
+- [ ] T140 [P] [US1] 前端 `RuntimeStatusBadge` 组件测试于 `bbird-hive-web/tests/agents/runtime-status-badge.spec.tsx`（NOT_READY 灰 / READY 绿 / FAILED 红）
+- [ ] T141 [P] [US1] 前端 `SmokeTestPanel` 组件测试于 `bbird-hive-web/tests/agents/smoke-test-panel.spec.tsx`（按钮触发 / loading / 显示回复与 tool 调用）
+- [ ] T142 [P] [US1] 集成测试 `account-agent-rebuild` 于 `tests/integration/account-agent-rebuild.test.ts`（创建 agent → 重启 service → 验证 `RuntimeRegistryBootstrap` rebuild 成功）
+
+### Implementation for AgentScope 集成
+
+- [ ] T143 [P] [US1] 创建 `SmokeTestRequest` / `SmokeTestResponse` / `AgentRuntime` DTO 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/api/dto/AgentRuntimeDtos.java`
+- [ ] T144 [US1] 实现 `AgentScopeFactory.build()` 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/service/runtime/AgentScopeFactory.java`（核心：`ReActAgent.builder().name(entity.getName()).sysPrompt(entity.getCapability()).model(entity.getModel()).toolkit(buildToolkit(toolConfig)).build()`；捕获 model 解析异常并包装为 `AgentScopeBuildException`）
+- [ ] T145 [US1] 实现 `RuntimeRegistry` 完整 API 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/service/runtime/RuntimeRegistry.java`（`register` / `get` / `remove + close` / `rebuild` / `deactivate` / `restore`；每个方法打 debug log）
+- [ ] T146 [US1] 实现 `AgentRuntimeController` 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/api/AgentRuntimeController.java`（`POST /api/agents/{id}/test` smoke test / `GET /api/agents/{id}/runtime` owner 视角 / `GET /api/internal/agents/{id}/runtime` 007 视角 mTLS）
+- [ ] T147 [P] [US1] 创建前端 `ModelSelector` 组件于 `bbird-hive-web/components/agents/ModelSelector.tsx`（下拉：dashscope:qwen-plus / openai:gpt-4 / openai:gpt-4o / anthropic:claude-sonnet-4-5 / gemini:gemini-2.0-flash / ollama:llama3；provider 自动派生）
+- [ ] T148 [P] [US1] 创建前端 `RuntimeStatusBadge` 组件于 `bbird-hive-web/components/agents/RuntimeStatusBadge.tsx`（`NOT_READY` 灰 + 文案"未实例化" / `READY` 绿 + "可运行" / `FAILED` 红 + 悬浮显示 `runtimeMessage`）
+- [ ] T149 [P] [US1] 创建前端 `SmokeTestPanel` 组件于 `bbird-hive-web/components/agents/SmokeTestPanel.tsx`（输入 prompt → POST `/api/agents/{id}/test` → 显示回复与耗时；可重试）
+- [ ] T150 [US1] 在 `/agents/[id]` 详情页接入 smoke test 按钮于 `bbird-hive-web/app/agents/[id]/page.tsx`（AgentForm 旁加 "测试运行" 按钮 → 打开 `SmokeTestPanel`）
+- [ ] T151 [P] [US1] 在 `AgentForm` 表单接入 `ModelSelector` 于 `bbird-hive-web/components/agents/AgentForm.tsx`（创建/编辑都可切换 model）
+- [ ] T152 [P] [US1] 在 `AgentCard` 列表项接入 `RuntimeStatusBadge` 于 `bbird-hive-web/components/agents/AgentCard.tsx`（列表显示 runtime 状态）
+- [ ] T153 [P] [US1] 创建前端 runtime API 客户端于 `bbird-hive-web/lib/api/runtime.ts`（`smokeTest` / `getRuntime` 类型与调用）
+- [ ] T154 [US1] 在 `AgentService.create/update` 调用 `factory.build()` + `registry.register()` 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/service/AgentService.java`（失败回写 `runtimeStatus=FAILED` + `runtimeMessage` + 写 `AgentEvent`)
+- [ ] T155 [US1] 在 `AgentService.delete` 调用 `registry.remove(agentId)` + `reActAgent.close()` 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/service/AgentService.java`（释放资源）
+- [ ] T156 [US1] 在 `AgentAdminService.disable / restore` 接入 `registry.deactivate / restore` 于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/service/AgentAdminService.java`（停用关闭实例 + 从 registry 移除；恢复时 rebuild）
+
+### 003 ↔ 007 跨服务契约收口
+
+- [ ] T157 [P] 编写 003 ↔ 007 internal runtime 契约说明于 `specs/003-agent-management/contracts/internal-agent-runtime.md`（`GET /api/internal/agents/{id}/runtime` 返回 schema + mTLS 鉴权 + 007 端集成方式）
+- [ ] T158 [P] 在 `SecurityConfig` 放行 `/api/internal/**` 路径于 `bbird-hive-server/services/agent-service/src/main/java/com/bbird/agent/config/SecurityConfig.java`（不需 session 鉴权；mTLS / service token 由基础设施层处理）
+
+### Polish
+
+- [ ] T159 [P] quickstart.md 加 "测试 agent 是否可运行" 章节于 `specs/003-agent-management/quickstart.md`（curl 调用 smoke test 端点 + 预期响应）
+- [ ] T160 [P] 端到端验证脚本于 `specs/003-agent-management/quickstart.md`（创建 → smoke test → 编辑 model → 二次 smoke test → 停用 → 验证 runtime=CLOSED）
+- [ ] T161 [P] 更新 plan.md 标记 AgentScope 集成已完成于 `specs/003-agent-management/plan.md`（在 Post-Design Constitution Check 加 003↔007 边界已落地条目）
+
+**Checkpoint**: AgentScope 2.0 真实创建闭环 —— 用户创建智能体后立即可调 `POST /api/agents/{id}/test` 验证；runtime status 在 `READY` 时 007 可拉取 runtime 元数据开始多轮会话。
+
+---
+
+## Notes（追加）
+
+- T128-T161 是 AgentScope 2.0 集成新增任务，与 Phase 1-7 的 T001-T127 并行存在
+- AgentScope 入口选型：`ReActAgent`（agentscope-core）—— 若需升级到 `HarnessAgent`（workspace/memory/sandbox），把 T130 改为 `HarnessAgent.builder()` + 加 `workspace` / `filesystem` 即可，API 形态相似
+- 003 ↔ 007 边界：003 收口「agent 创建 + runtime 状态 + smoke test」；007 收口「多轮会话 + 流式输出 + 长期 state」—— 007 不再自行实例化 agent
+- 性能目标：smoke test P95 < 5 秒（含 LLM 推理）；RuntimeRegistry rebuild 启动期间增量执行
